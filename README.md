@@ -1,12 +1,12 @@
 # Plover Stenograph Wi-Fi Plugin
 
+This Plover plugin allows you to use Diamanté or Luminex machines with Wi-Fi capability.
+
 ### To install:
 
 1. Download the repo.
 2. Navigate to it in your terminal.
 3. Make sure you have Python and Pip installed and do `pip3 install -e .`
-
-This Plover plugin allows you to use Diamanté or Luminex machines with Wi-Fi capability.
 
 ### To use:
 
