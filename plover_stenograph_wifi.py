@@ -240,7 +240,9 @@ class StenographMachine(AbstractStenographMachine):
             # Disconnect device if it's already connected.
             if self._connected:
                 self.disconnect()
+                print('disconnect block entered.')
             
+            print('entered connect()!')
             # The temporary socket used to find the IP address of
             # the Stenograph machine.
             udp = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -250,37 +252,46 @@ class StenographMachine(AbstractStenographMachine):
 
             # final TCP socket sent to the connect function.
             sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            sock.settimeout(3)
+            sock.settimeout(2)
 
             server_address = None
+            connected = False
 
             try:
                 # Find the device's IP address by battle cry.
+                print('Sending "%s"' % BATTLE_CRY.decode())
                 udp.sendto(BATTLE_CRY, BROADCAST_ADDRESS)
 
                 # Upon doing the battle cry, if a Stenograph machine is present
                 # on the network, then data should contain "Mira in the neighborhood + machine name"
                 data, server = udp.recvfrom(5012)
+                print('received %s bytes from %s' % (len(data), server))
+                print('received: "%s"' % data.decode())
+
 
                 # If the response back contains "Mira in the neighborhood"
                 # that means it's a Stenograph machine.
                 # Save the IP address of the machine to pass it along.
                 if 'Mira in the neighborhood' in data.decode():
                     server_address = server
+                    connected = True
 
             except IOError as e:
-                log.warning(u'Searching for Stenograph machines on the network…')
-                log.debug('Stenograph exception: %s', e)
-
                 udp.sendto(BATTLE_CRY, BROADCAST_ADDRESS)
-
                 data, server = udp.recvfrom(5012)
+
+                print('IOERR received %s bytes from %s' % (len(data), server))
+                print('IOERR received: "%s"' % data.decode())
 
                 if 'Mira in the neighborhood' in data.decode():
                     server_address = server
+                    connected = True
+                    
             finally:
                 # Close the UDP socket.
                 udp.close()
+                print('UDP socket closed.')
+                udp = None
 
             # No IP address = no device found.
             if not server_address:
@@ -289,25 +300,28 @@ class StenographMachine(AbstractStenographMachine):
             # Now create a TCP connection to the found machine's IP address.
             try:
                 sock.connect((server[0], 80))
+                print('socket bound to %s' % server[0])
             except socket.error as exc:
                 print('Socket disconnected: %s' % exc)
 
-
-            # Pass 'em them as class variables.
+            # Pass 'em as class variables.
             self._connected = True
             self._sock = sock
             self._server_address = server_address
 
             return self._connected
 
+        # DUMP 'EM.
         def disconnect(self):
-            self._connected = False
             self._sock.close()
+            self._connected = False
+            self._sock = None
             self._server_address = None
 
         def send_receive(self, request):
             assert self._connected, 'Cannot read from machine if not connected.'
             try:
+                # Send packet
                 self._sock.send(request.pack())
 
                 # Buffer size = MAX_READ + StenoPacket.HEADER_SIZE
@@ -380,6 +394,9 @@ class Stenograph(ThreadedStenotypeBase):
         except AssertionError as e:
             log.warning('Error connecting: %s', e)
             self._error()
+        except IOError as e:
+            log.warning('Lost connection with Stenograph machine: %s', e)
+            self._error()
         finally:
             return connected
 
@@ -387,6 +404,7 @@ class Stenograph(ThreadedStenotypeBase):
         self._initializing()
         connected = False
         while not self.finished.isSet() and not connected:
+            print('trying to reconnnnnnnnect...')
             sleep(0.25)
             connected = self._connect_machine()
         return connected
@@ -443,6 +461,7 @@ class Stenograph(ThreadedStenotypeBase):
                 log.warning(u'Stenograph machine disconnected, reconnecting…')
                 log.debug('Stenograph exception: %s', e)
                 self._reconnect()
+                
                 # User could start a new file while disconnected.
                 state.reset()
                 if self._reconnect():
