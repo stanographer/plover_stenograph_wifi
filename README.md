@@ -20,4 +20,5 @@ But if it's not connecting, try hitting the reconnect button in Plover.
 
 ### Improvements:
 
-For now it works pretty well. There are a couple of bugs like when you lose connection, sometimes it freezes.
+1. For now it works pretty well. There are a couple of bugs like when you lose connection, sometimes it freezes.
+2. Get it on pip.
