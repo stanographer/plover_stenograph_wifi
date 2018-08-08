@@ -20,7 +20,7 @@ That's it! If it disconnects, it should already reconnect when you're in range.
 But if it's not connecting, try hitting the reconnect button in Plover.
 
 ## Tested Machines
-Stenograph Luminex (Build #17513 - 1 August 2018)
+Stenograph Luminex ([Build #17513, 1 August 2018](http://www.stenograph.com/writer-downloads))
 
 ### Improvements:
 
