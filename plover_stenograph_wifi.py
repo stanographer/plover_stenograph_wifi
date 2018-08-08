@@ -266,7 +266,6 @@ class StenographMachine(AbstractStenographMachine):
             except IOError as e:
                 log.warning(u'Searching for nearby Stenograph machines…')
                 log.debug('Stenograph exception: %s', e)
-
             finally:
                 # Close the UDP socket.
                 udp.close()
