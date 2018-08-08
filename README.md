@@ -1,4 +1,4 @@
-# Plover Stenograph Wi-Fi Plugin
+# Plover Stenograph Wi-Fi
 
 This Plover plugin allows you to use Diamanté or Luminex machines with Wi-Fi capability.
 Based on [work](https://github.com/morinted/plover_stenograph_usb) by Ted Morin & Keith McReady.
