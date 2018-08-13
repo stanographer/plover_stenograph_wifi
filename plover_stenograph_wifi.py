@@ -318,7 +318,7 @@ class StenographMachine(AbstractStenographMachine):
                 return None
             except socket.error:
                 return None
-            except :
+            except:
                 return None
             else:
                 if response and len(response) >= StenoPacket.HEADER_SIZE:
