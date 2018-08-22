@@ -244,7 +244,7 @@ class StenographMachine(AbstractStenographMachine):
 
             # This socket option is necessary to prevent PermissionErr 13 violation.
             udp_socket.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
-            udp_socket.settimeout(2)
+            udp_socket.settimeout(3)
 
             try:
                 # Find the device's IP address by broadcasting "battle cry."
@@ -254,9 +254,18 @@ class StenographMachine(AbstractStenographMachine):
                 # Upon battle cry, if a Stenograph machine is present on the network,
                 # then data should contain "Mira in the neighborhood + machine name"
                 response, address = udp_socket.recvfrom(5012)
+                udp_socket.close()
+            
+            except IOError as e:
+                if (self._sock):
+                    self._sock.close()
+                    self._sock = None
+                    
+                print('Socket error: %s' % e)
 
             except:
                 print('Connection lost. Try reconnecting and refreshing.')
+
 
             # If the response back contains "Mira in the neighborhood," that means it's a Stenograph machine.
             # Save the IP address of the machine to pass it along.
