@@ -8,6 +8,7 @@ from typing import Optional
 
 import socket
 import sys
+import struct
 
 '''
 This Plover plugin allows you to use Diamanté or Luminex machines with Wi-Fi capability.
@@ -78,10 +79,15 @@ STENO_KEY_CHART = (
 MAX_READ = 0x200
 
 # For UDP broadcast. Stenograph machines listen on port 5012 for opening packet.
-BROADCAST_ADDRESS = ('255.255.255.255', 5012)
+# BROADCAST_ADDRESS = ("255.255.255.255", 5012)
+BROADCAST_ADDRESS = "255.255.255.255"
+BROADCAST_ADDRESS_2 = 'FF:FF:FF:FF:FF:FF'
+BROADCAST_ADDRESS_3 = '192.168.1.255'
+BROADCAST_PORT = 5012
 
 # This is the specific reply by Stenograph machines to indicate their presence.
-BATTLE_CRY = 'Calling All Miras...'.encode()
+BATTLE_CRY = b'Calling All Miras...'
+
 
 class StenoPacket(object):
     """
@@ -157,7 +163,8 @@ class StenoPacket(object):
 
     @staticmethod
     def _increment_sequence_number():
-        StenoPacket.sequence_number = (StenoPacket.sequence_number + 1) % 0xFFFFFFFF
+        StenoPacket.sequence_number = (
+            StenoPacket.sequence_number + 1) % 0xFFFFFFFF
 
     @staticmethod
     def unpack(usb_packet):
@@ -169,7 +176,8 @@ class StenoPacket(object):
         if packet.data_length:
             packet.data, = unpack(
                 '%ss' % packet.data_length,
-                usb_packet[StenoPacket.HEADER_SIZE:StenoPacket.HEADER_SIZE + packet.data_length]
+                usb_packet[StenoPacket.HEADER_SIZE:StenoPacket.HEADER_SIZE +
+                           packet.data_length]
             )
         return packet
 
@@ -178,7 +186,8 @@ class StenoPacket(object):
         """Request to open a file on the writer, defaults to the realtime file."""
         return StenoPacket(
             packet_id=StenoPacket.ID_OPEN,
-            p1=ord(disk_id) if disk_id else 0, # Omitting p1 may use the default drive.
+            # Omitting p1 may use the default drive.
+            p1=ord(disk_id) if disk_id else 0,
             data=file_name,
         )
 
@@ -228,134 +237,175 @@ class AbstractStenographMachine(object):
         """Send a StenoPacket to the machine and return the response or None"""
         raise NotImplementedError('send_receive() is not implemented')
 
+
 class StenographMachine(AbstractStenographMachine):
+    def __init__(self):
+        super(StenographMachine, self).__init__()
+        self._connected = False
+        self._sock = None
+        self._server_address = None
+        self._stenograph_address = None
 
-        def __init__(self):
-            super(StenographMachine, self).__init__()
-            self._connected = False
-            self._sock = None
-            self._server_address = None
+    def find_stenograph(self):
+        # try:
+        #     udp = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
+        #     udp.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+        #     udp.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        #     udp.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
+        #     # ttl = struct.pack('b', 1)
+        #     # sock.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_TTL, ttl)
+        #     udp.settimeout(6)
+        #     udp.sendto(BATTLE_CRY, (BROADCAST_ADDRESS, BROADCAST_PORT))
+        #     print('Sending to: ', BATTLE_CRY, (BROADCAST_ADDRESS, BROADCAST_PORT))
+        #
+        #     while True:
+        #         response, address = udp.recvfrom(4096)
+        #         print('Response: ', response)
+        #         print('Address: ', address)
+        #
+        #         print('Trying again...')
+        #
+        # except ConnectionError as e:
+        #     udp.sendto(BATTLE_CRY, (BROADCAST_ADDRESS_2, BROADCAST_PORT))
+        #     print('Sending to: ', BATTLE_CRY, BROADCAST_ADDRESS_2)
+        #
+        # except IOError as e:
+        #     if (self._sock):
+        #         self._sock.close()
+        #         self._sock = None
+        #
+        #     print('Socket error: ', e)
+        #
+        # finally:
+        #     udp.close()
 
-        def find_stenograph(self):
-            stenograph_address = None
-
-            # The temporary socket used to find the IP address of the Stenograph machine.
-            udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-
-            # This socket option is necessary to prevent PermissionErr 13 violation.
-            udp_socket.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
-            udp_socket.settimeout(3)
-
-            try:
-                # Find the device's IP address by broadcasting "battle cry."
-                print('Sending "%s"' % BATTLE_CRY.decode())
-                udp_socket.sendto(BATTLE_CRY, BROADCAST_ADDRESS)
-
-                # Upon battle cry, if a Stenograph machine is present on the network,
-                # then data should contain "Mira in the neighborhood + machine name"
-                response, address = udp_socket.recvfrom(5012)
-                udp_socket.close()
-            
-            except IOError as e:
-                if (self._sock):
-                    self._sock.close()
-                    self._sock = None
-                    
-                print('Socket error: %s' % e)
-
-            except:
-                print('Connection lost. Try reconnecting and refreshing.')
+        return ("192.168.1.223", 80)
 
 
-            # If the response back contains "Mira in the neighborhood," that means it's a Stenograph machine.
-            # Save the IP address of the machine to pass it along.
-            if 'Mira in the neighborhood' in response.decode():
-                stenograph_address = address
 
-            # Close the UDP socket.
-            udp_socket.close()
-    
-            return stenograph_address
+    # def find_stenograph(self):
 
-        def connect(self):
-            """Attempt to connect and return connection"""
+    #     # The temporary socket used to find the IP address of the Stenograph machine.
+    #     udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
-            # Disconnect device if it's already connected.
-            if self._connected:
-                self.disconnect()
+    #     # This socket option is necessary to prevent PermissionErr 13 violation.
+    #     udp_socket.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+    #     udp_socket.settimeout(3)
 
-            # Find IP of Stenograph machine.
-            server_address = self.find_stenograph()
-                
-            # No IP address = no device found.
-            if not server_address:
-                return self._connected
+    #     try:
+    #         # Find the device's IP address by broadcasting "battle cry."
+    #         print('Sending "%s"' % BATTLE_CRY.decode())
+    #         udp_socket.sendto(BATTLE_CRY, BROADCAST_ADDRESS)
 
-            # Now create a TCP connection to the found machine's IP address.
-            try:
-                sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                sock.settimeout(2.5)
-                sock.connect((server_address[0], 80))
-                self._sock = sock
-                log.warning('Connected successfully at: %s!' % server_address[0])
-            except socket.timeout as e:
-                log.warning('Socket timed out: %s' % e)
-            except socket.error as exc:
-                log.warning('Socket binding error: %s' % exc)
+    #         # Upon battle cry, if a Stenograph machine is present on the network,
+    #         # then data should contain "Mira in the neighborhood + machine name"
+    #         response, address = udp_socket.recvfrom(5012)
+    #         udp_socket.close()
 
-            # Pass 'em as class variables.
-            self._connected = True
-            self._server_address = server_address
+    #     except IOError as e:
+    #         if (self._sock):
+    #             self._sock.close()
+    #             self._sock = None
 
+    #         print('Socket error: %s' % e)
+
+    #     except:
+    #         print('Connection lost. Try reconnecting and refreshing.')
+
+    #     # If the response back contains "Mira in the neighborhood," that means it's a Stenograph machine.
+    #     # Save the IP address of the machine to pass it along.
+    #     if 'Mira in the neighborhood' in response.decode():
+    #         self._stenograph_address = address
+
+    #     # Close the UDP socket.
+    #     udp_socket.close()
+
+    #     return self._stenograph_address
+
+    def connect(self):
+        """Attempt to connect and return connection"""
+
+        # Disconnect device if it's already connected.
+        if self._connected:
+            self.disconnect()
+
+        # Find IP of Stenograph machine.
+        server_address = self.find_stenograph()
+
+        # No IP address = no device found.
+        if not server_address:
             return self._connected
 
-        # DUMP 'EM.
-        def disconnect(self):
-            self._sock.close()
-            self._connected = False
-            self._server_address = None
+        # Now create a TCP connection to the found machine's IP address.
+        try:
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            sock.settimeout(2.5)
+            sock.connect((server_address[0], 80))
+            self._sock = sock
+            log.warning('Connected successfully at: %s!' % server_address[0])
+        except socket.timeout as e:
+            log.warning('Socket timed out: %s' % e)
+        except socket.error as exc:
+            log.warning('Socket binding error: %s' % exc)
 
-        def send_receive(self, request):
-            assert self._connected, 'Cannot read from machine if not connected.'
-            try:
-                # Send packet
-                self._sock.send(request.pack())
+        # Pass 'em as class variables.
+        self._connected = True
+        self._server_address = server_address
 
-                # Buffer size = MAX_READ + StenoPacket.HEADER_SIZE
-                response = self._sock.recv(MAX_READ + StenoPacket.HEADER_SIZE)
-            except OSError:
-                return None
-            except socket.error:
-                return None
-            except:
-                return None
-            else:
-                if response and len(response) >= StenoPacket.HEADER_SIZE:
-                    writer_packet = StenoPacket.unpack(response)
-                    # Ignore data if sequence numbers don't match.
-                    if writer_packet.sequence_number == request.sequence_number:
-                        return writer_packet
-                return None
+        return self._connected
+
+    def disconnect(self):
+        self._sock.close()
+        self._connected = False
+        self._server_address = None
+
+    def send_receive(self, request):
+        assert self._connected, 'Cannot read from machine if not connected.'
+        try:
+            # Send packet
+            self._sock.send(request.pack())
+
+            # Buffer size = MAX_READ + StenoPacket.HEADER_SIZE
+            response = self._sock.recv(MAX_READ + StenoPacket.HEADER_SIZE)
+        except OSError:
+            return None
+        except socket.error:
+            return None
+        except:
+            return None
+        else:
+            if response and len(response) >= StenoPacket.HEADER_SIZE:
+                writer_packet = StenoPacket.unpack(response)
+                # Ignore data if sequence numbers don't match.
+                if writer_packet.sequence_number == request.sequence_number:
+                    return writer_packet
+            return None
+
 
 class ProtocolViolationException(Exception):
     """The writer did something unexpected"""
     pass
 
+
 class UnableToPerformRequestException(Exception):
     """The writer cannot perform the action requested"""
     pass
+
 
 class FileNotAvailableException(Exception):
     """The writer cannot read from the current file"""
     pass
 
+
 class NoRealtimeFileException(Exception):
     """The realtime file doesn't exist, likely because the user hasn't started writing"""
     pass
 
+
 class FinishedReadingClosedFileException(Exception):
     """The closed file being read is complete and cannot be read further"""
     pass
+
 
 class Stenograph(ThreadedStenotypeBase):
 
