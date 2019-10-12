@@ -79,7 +79,6 @@ STENO_KEY_CHART = (
 MAX_READ = 0x200
 
 # For UDP broadcast. Stenograph machines listen on port 5012 for opening packet.
-# BROADCAST_ADDRESS = ("255.255.255.255", 5012)
 BROADCAST_ADDRESS = "255.255.255.255"
 BROADCAST_PORT = 5012
 
