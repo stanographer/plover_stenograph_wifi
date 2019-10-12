@@ -81,8 +81,6 @@ MAX_READ = 0x200
 # For UDP broadcast. Stenograph machines listen on port 5012 for opening packet.
 # BROADCAST_ADDRESS = ("255.255.255.255", 5012)
 BROADCAST_ADDRESS = "255.255.255.255"
-BROADCAST_ADDRESS_2 = 'FF:FF:FF:FF:FF:FF'
-BROADCAST_ADDRESS_3 = '192.168.1.255'
 BROADCAST_PORT = 5012
 
 # This is the specific reply by Stenograph machines to indicate their presence.
@@ -247,80 +245,28 @@ class StenographMachine(AbstractStenographMachine):
         self._stenograph_address = None
 
     def find_stenograph(self):
-        # try:
-        #     udp = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
-        #     udp.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
-        #     udp.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        #     udp.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
-        #     # ttl = struct.pack('b', 1)
-        #     # sock.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_TTL, ttl)
-        #     udp.settimeout(6)
-        #     udp.sendto(BATTLE_CRY, (BROADCAST_ADDRESS, BROADCAST_PORT))
-        #     print('Sending to: ', BATTLE_CRY, (BROADCAST_ADDRESS, BROADCAST_PORT))
-        #
-        #     while True:
-        #         response, address = udp.recvfrom(4096)
-        #         print('Response: ', response)
-        #         print('Address: ', address)
-        #
-        #         print('Trying again...')
-        #
-        # except ConnectionError as e:
-        #     udp.sendto(BATTLE_CRY, (BROADCAST_ADDRESS_2, BROADCAST_PORT))
-        #     print('Sending to: ', BATTLE_CRY, BROADCAST_ADDRESS_2)
-        #
-        # except IOError as e:
-        #     if (self._sock):
-        #         self._sock.close()
-        #         self._sock = None
-        #
-        #     print('Socket error: ', e)
-        #
-        # finally:
-        #     udp.close()
+        try:
+            log.warning("Searching for Wi-Fi Stenographs...")
+            udp = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
+            udp.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
 
-        return ("192.168.1.223", 80)
+            client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
+            while self._server_address == None:
+                udp.sendto(BATTLE_CRY, (BROADCAST_ADDRESS, BROADCAST_PORT))
+                sleep(1)
 
-
-    # def find_stenograph(self):
-
-    #     # The temporary socket used to find the IP address of the Stenograph machine.
-    #     udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-
-    #     # This socket option is necessary to prevent PermissionErr 13 violation.
-    #     udp_socket.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
-    #     udp_socket.settimeout(3)
-
-    #     try:
-    #         # Find the device's IP address by broadcasting "battle cry."
-    #         print('Sending "%s"' % BATTLE_CRY.decode())
-    #         udp_socket.sendto(BATTLE_CRY, BROADCAST_ADDRESS)
-
-    #         # Upon battle cry, if a Stenograph machine is present on the network,
-    #         # then data should contain "Mira in the neighborhood + machine name"
-    #         response, address = udp_socket.recvfrom(5012)
-    #         udp_socket.close()
-
-    #     except IOError as e:
-    #         if (self._sock):
-    #             self._sock.close()
-    #             self._sock = None
-
-    #         print('Socket error: %s' % e)
-
-    #     except:
-    #         print('Connection lost. Try reconnecting and refreshing.')
-
-    #     # If the response back contains "Mira in the neighborhood," that means it's a Stenograph machine.
-    #     # Save the IP address of the machine to pass it along.
-    #     if 'Mira in the neighborhood' in response.decode():
-    #         self._stenograph_address = address
-
-    #     # Close the UDP socket.
-    #     udp_socket.close()
-
-    #     return self._stenograph_address
+                data, address = udp.recvfrom(65565)
+            
+                if "Mira in the neighborhood" in data.decode("utf-8"):
+                    self._stenograph_address = address
+                    udp.close()
+                    break
+                    
+        except client.timeout as e:
+            log.warning('Client timed out: %s' % e)
+        
+        return self._stenograph_address
 
     def connect(self):
         """Attempt to connect and return connection"""
@@ -342,11 +288,11 @@ class StenographMachine(AbstractStenographMachine):
             sock.settimeout(2.5)
             sock.connect((server_address[0], 80))
             self._sock = sock
-            log.warning('Connected successfully at: %s!' % server_address[0])
+            log.warning('Stenograph found at IP address: %s!' % server_address[0])
         except socket.timeout as e:
-            log.warning('Socket timed out: %s' % e)
+            log.warning('Stenograph timed out: %s' % e)
         except socket.error as exc:
-            log.warning('Socket binding error: %s' % exc)
+            log.warning('Stenograph binding error: %s' % exc)
 
         # Pass 'em as class variables.
         self._connected = True
