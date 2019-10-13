@@ -236,11 +236,11 @@ class AbstractStenographMachine(object):
 
 
 class StenographMachine(AbstractStenographMachine):
+    
     def __init__(self):
         super(StenographMachine, self).__init__()
         self._connected = False
         self._sock = None
-        self._server_address = None
         self._stenograph_address = None
 
     def find_stenograph(self):
@@ -251,7 +251,7 @@ class StenographMachine(AbstractStenographMachine):
 
             client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
-            while self._server_address == None:
+            while self._stenograph_address == None:
                 udp.sendto(BATTLE_CRY, (BROADCAST_ADDRESS, BROADCAST_PORT))
                 sleep(1)
 
@@ -275,34 +275,32 @@ class StenographMachine(AbstractStenographMachine):
             self.disconnect()
 
         # Find IP of Stenograph machine.
-        server_address = self.find_stenograph()
+        self._stenograph_address = self.find_stenograph()
 
         # No IP address = no device found.
-        if not server_address:
+        if not self._stenograph_address:
             return self._connected
 
         # Now create a TCP connection to the found machine's IP address.
         try:
             sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             sock.settimeout(2.5)
-            sock.connect((server_address[0], 80))
+            sock.connect((self._stenograph_address[0], 80))
             self._sock = sock
-            log.warning('Stenograph found at IP address: %s!' % server_address[0])
+            log.warning('Stenograph found at IP address: %s!' % self._stenograph_address[0])
         except socket.timeout as e:
             log.warning('Stenograph timed out: %s' % e)
         except socket.error as exc:
             log.warning('Stenograph binding error: %s' % exc)
 
-        # Pass 'em as class variables.
         self._connected = True
-        self._server_address = server_address
 
         return self._connected
 
     def disconnect(self):
         self._sock.close()
         self._connected = False
-        self._server_address = None
+        self._stenograph_address = None
 
     def send_receive(self, request):
         assert self._connected, 'Cannot read from machine if not connected.'
@@ -350,7 +348,6 @@ class NoRealtimeFileException(Exception):
 class FinishedReadingClosedFileException(Exception):
     """The closed file being read is complete and cannot be read further"""
     pass
-
 
 class Stenograph(ThreadedStenotypeBase):
 
