@@ -86,8 +86,7 @@ BROADCAST_ADDRESS = "255.255.255.255"
 BROADCAST_PORT = 5012
 
 # This is the specific reply by Stenograph machines to indicate their presence.
-BATTLE_CRY = b'Calling All Miras...'
-
+BATTLE_CRY = b'Calling All Miras...\x00\x00\x00\x00\x00\x00\x00\x00'
 
 class StenoPacket(object):
     """

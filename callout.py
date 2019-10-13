@@ -3,7 +3,7 @@ import time
 
 BROADCAST_ADDRESS = "255.255.255.255"
 BROADCAST_PORT = 5012
-BATTLE_CRY = b'Calling All Miras...'
+BATTLE_CRY = b'Calling All Miras...\x00\x00\x00\x00\x00\x00\x00\x00\x00'
 MACHINE = 0
 
 udp = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
