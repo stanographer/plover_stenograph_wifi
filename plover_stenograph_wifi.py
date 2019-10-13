@@ -21,6 +21,8 @@ Wi-Fi and have it enabled in your settings.
 That's it! If it disconnects, it should already reconnect when you're in range.
 But if it's not connecting, try hitting the reconnect button in Plover.
 
+Based on Ted Morin's code and A LOT of help from Keith McCready.
+
 KEITH'S NOTES:
 
 Packet format:
@@ -79,6 +81,7 @@ STENO_KEY_CHART = (
 MAX_READ = 0x200
 
 # For UDP broadcast. Stenograph machines listen on port 5012 for opening packet.
+# Response is sent on port 5015.
 BROADCAST_ADDRESS = "255.255.255.255"
 BROADCAST_PORT = 5012
 
@@ -253,7 +256,7 @@ class StenographMachine(AbstractStenographMachine):
 
             while self._stenograph_address == None:
                 udp.sendto(BATTLE_CRY, (BROADCAST_ADDRESS, BROADCAST_PORT))
-                sleep(1)
+                sleep(1.2)
 
                 data, address = udp.recvfrom(65565)
             
