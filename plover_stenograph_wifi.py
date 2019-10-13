@@ -251,6 +251,7 @@ class StenographMachine(AbstractStenographMachine):
             log.warning("Searching for Wi-Fi Stenographs...")
             udp = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
             udp.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+            udp.settimeout(10)
 
             client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
@@ -287,14 +288,14 @@ class StenographMachine(AbstractStenographMachine):
         # Now create a TCP connection to the found machine's IP address.
         try:
             sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            sock.settimeout(2.5)
+            sock.settimeout(10)
             sock.connect((self._stenograph_address[0], 80))
             self._sock = sock
-            log.warning('Stenograph found at IP address: %s!' % self._stenograph_address[0])
+            log.warning('Stenograph writer found at IP address: %s!' % self._stenograph_address[0])
         except socket.timeout as e:
-            log.warning('Stenograph timed out: %s' % e)
+            log.warning('Stenograph writer timed out: %s' % e)
         except socket.error as exc:
-            log.warning('Stenograph binding error: %s' % exc)
+            log.warning('Stenograph writer binding error: %s' % exc)
 
         self._connected = True
 
@@ -377,7 +378,7 @@ class Stenograph(ThreadedStenotypeBase):
         self._initializing()
         """Begin listening for output from the stenotype machine."""
         if not self._connect_machine():
-            log.warning('Not connected. Try clicking refresh.')
+            log.warning('Writer not connected. Try clicking refresh.')
             self._error()
         else:
             self._ready()
@@ -453,13 +454,13 @@ class Stenograph(ThreadedStenotypeBase):
                     StenoPacket.make_read_request(file_offset=state.offset)
                 )
             except IOError as e:
-                log.warning(u'Stenograph machine disconnected, reconnecting…')
+                log.warning(u'Stenograph writer disconnected, reconnecting…')
                 log.debug('Stenograph exception: %s', e)
 
                 # User could start a new file while disconnected.
                 state.reset()
                 if self._reconnect():
-                    log.warning('Stenograph reconnected.')
+                    log.warning('Stenograph writer reconnected.')
                     self._ready()
             except NoRealtimeFileException:
                 # User hasn't started writing, just keep opening the realtime file

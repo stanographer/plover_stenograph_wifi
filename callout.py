@@ -23,7 +23,7 @@ while MACHINE == 0:
 
 while True:
     data = client.recvfrom(5015)
-    client.bind((INADDR_ANY, 5015))
+    client.bind(("", 5015))
 
     print("data!", data)
     time.sleep(1)
