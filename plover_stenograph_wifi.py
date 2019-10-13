@@ -378,7 +378,7 @@ class Stenograph(ThreadedStenotypeBase):
         self._initializing()
         """Begin listening for output from the stenotype machine."""
         if not self._connect_machine():
-            log.warning('Writer not connected. Try clicking refresh.')
+            log.warning('Writer not found. Try clicking refresh.')
             self._error()
         else:
             self._ready()
